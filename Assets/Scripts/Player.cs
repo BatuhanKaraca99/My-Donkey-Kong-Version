@@ -2,8 +2,14 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
+    private SpriteRenderer spriteRenderer;
+    public Sprite[] runSprites;
+    public Sprite climbSprite;
+    private int spriteIndex;
+
     private new Rigidbody2D rigidbody; // rigidbody reference
     private new Collider2D collider; //for size
+
     private Collider2D[] results; //variable
     private Vector2 direction; //direction reference
 
@@ -11,17 +17,30 @@ public class Player : MonoBehaviour
     public float jumpStrenght = 1f;
 
     private bool grounded;
+    private bool climbing;
 
     private void Awake()
     {
+        spriteRenderer = GetComponent<SpriteRenderer>();
         rigidbody = GetComponent<Rigidbody2D>();
         collider = GetComponent<Collider2D>();
         results = new Collider2D[4]; //maximum overlap
     }
 
+    private void OnEnable()
+    {
+        InvokeRepeating(nameof(AnimateSprite),1f/12f,1f/12f);
+    }
+
+    private void OnDisable()
+    {
+        CancelInvoke();
+    }
+
     private void CheckCollision() //is grounded
     {
         grounded = false;
+        climbing = false;
 
         Vector2 size = collider.bounds.size; //our character's collider size
         size.y += 0.1f;
@@ -38,6 +57,10 @@ public class Player : MonoBehaviour
 
                 Physics2D.IgnoreCollision(collider, results[i], !grounded); //character's collision with top areas' collision
             }
+            else if(hit.layer == LayerMask.NameToLayer("Ladder"))
+            {
+                climbing = true;
+            }
         }
     }
 
@@ -45,7 +68,11 @@ public class Player : MonoBehaviour
     {
         CheckCollision();
 
-        if (grounded && Input.GetButtonDown("Jump"))
+        if (climbing)
+        {
+            direction.y = Input.GetAxis("Vertical") * moveSpeed; //go up
+        }
+        else if (grounded && Input.GetButtonDown("Jump"))
         {
             direction = Vector2.up * jumpStrenght;
         }
@@ -74,5 +101,24 @@ public class Player : MonoBehaviour
     {
         //rigidbody movement(current + direction with time)
         rigidbody.MovePosition(rigidbody.position + direction * Time.fixedDeltaTime); 
+    }
+
+    private void AnimateSprite() 
+    {
+        if (climbing)
+        {
+            spriteRenderer.sprite = climbSprite;
+        }
+        else if(direction.x != 0f) //if moving
+        {
+            spriteIndex++;
+
+            if (spriteIndex >= runSprites.Length)
+            {
+                spriteIndex = 0;
+            }
+
+            spriteRenderer.sprite = runSprites[spriteIndex];
+        }
     }
 }
